@@ -1,7 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <type_traits>
-#include "MemoryPool.h"
+#include "MemoryPool_Alloc.h"
 
 template <typename T>
 class Allocator{
@@ -34,7 +34,7 @@ public:
     void destroy(_Uty *_Ptr);
 
 private:
-    static MemoryPool pool;
+    static MemoryPool_Alloc pool;
 };
 /**TODO:
  * solve the case that the operator& is overloaded.
