@@ -1,17 +1,44 @@
 #pragma once
 #ifndef _HBCALLOC_H
 #define _HBCALLOC_H
+
 #include <cstdlib>
 #include <cstddef>
+
+#define USE_VOLATILE
+// #define USE_MALLOC
+
+#ifdef USE_MALLOC
+class MemoryPool_Alloc  //ä¸€çº§ç©ºé—´é…ç½®å™¨
+{
+
+   private:
+    // these funs below are used for "OOM" situations
+    // OOM = out of memory
+   public:
+
+    static void* allocate(size_t n) {
+        void* ret = malloc(n);
+        return ret;
+    }
+
+    static void deallocate(void* p, size_t n) { free(p); }
+
+    static void* reallocate(void* p, size_t oldSZ, size_t newSZ) {
+        void* ret = realloc(p, newSZ);
+        return ret;
+    }
+};
+#else
 
 class MemoryPool_Alloc {
 	
 private:
 
-	enum { __ALIGN = 8 };//Ğ¡ĞÍÇø¿éµÄÉÏµ÷±ß½ç
-	enum { __MAX_BYTES = 256 };//Ğ¡ĞÍÇø¿éµÄÉÏ½ç£¬Èôµ÷ÓÃÄÚ´æ³¬¹ı256×Ö½Ú£¬ÔòÖ±½Óµ÷ÓÃmalloc,freeºÍrealloc
-	enum { __NFREELISTS = __MAX_BYTES / __ALIGN };//freelists¸öÊı
-	union  obj  //freelistsµÄ½Úµã
+	enum { __ALIGN = 64 };//å°å‹åŒºå—çš„ä¸Šè°ƒè¾¹ç•Œ
+	enum { __MAX_BYTES = 1024 };//å°å‹åŒºå—çš„ä¸Šç•Œï¼Œè‹¥è°ƒç”¨å†…å­˜è¶…è¿‡256å­—èŠ‚ï¼Œåˆ™ç›´æ¥è°ƒç”¨malloc,freeå’Œrealloc
+	enum { __NFREELISTS = __MAX_BYTES / __ALIGN };//freelistsä¸ªæ•°
+	union  obj  //freelistsçš„èŠ‚ç‚¹
 	{
 		union obj* Free_List_Link;
 		char client_data[1];
@@ -22,8 +49,8 @@ private:
 	static char *start_free;
 	static char *end_free;
 	static size_t heap_size;
-    //ÄÚÓÃº¯Êı
-    //½«bytesÉÏµ÷ÖÁ8µÄ±¶Êı
+    //å†…ç”¨å‡½æ•°
+    //å°†bytesä¸Šè°ƒè‡³8çš„å€æ•°
 	static size_t ROUND_UP(size_t bytes) {  
 
 		if (bytes % 8 != 0)
@@ -38,17 +65,17 @@ private:
 
 	}
 
-	//¸ù¾İÇø¿é´óĞ¡£¬¾ö¶¨Ê¹ÓÃµÚnºÅfree_list n´Ó1ËãÆğ
+	//æ ¹æ®åŒºå—å¤§å°ï¼Œå†³å®šä½¿ç”¨ç¬¬nå·free_list nä»1ç®—èµ·
 	static size_t FREELIST_INDEX(size_t bytes) {
 
 		return (((bytes)+__ALIGN - 1) / __ALIGN - 1);
 
 	}
 
-	//·µ»ØÒ»¸ö´óĞ¡ÎªnµÄ¶ÔÏó£¬²¢³¢ÊÔÊ¹ÓÃ´óĞ¡ÎªnµÄÇø¿éÌî³äfree_list
+	//è¿”å›ä¸€ä¸ªå¤§å°ä¸ºnçš„å¯¹è±¡ï¼Œå¹¶å°è¯•ä½¿ç”¨å¤§å°ä¸ºnçš„åŒºå—å¡«å……free_list
 	static void *refill(size_t n);
-	//ÅäÖÃÒ»´ó¿é¿Õ¼ä£¬²¢³¢ÊÔÊ¹ÓÃ´óĞ¡ÎªnµÄÇø¿éÌî³äfree_list
-	//nobjs¿ÉÄÜ»á½µµÍ£¬µ±ÅäÖÃÓĞÀ§ÄÑÊ±
+	//é…ç½®ä¸€å¤§å—ç©ºé—´ï¼Œå¹¶å°è¯•ä½¿ç”¨å¤§å°ä¸ºnçš„åŒºå—å¡«å……free_list
+	//nobjså¯èƒ½ä¼šé™ä½ï¼Œå½“é…ç½®æœ‰å›°éš¾æ—¶
 	static char *chunk_alloc(size_t size, size_t& nobjs);
 
 public:
@@ -58,51 +85,50 @@ public:
 	MemoryPool_Alloc() {};
 	~MemoryPool_Alloc() {};
 };
-    //¶¨ÒåÓë³õÖµÉè¶¨
+    //å®šä¹‰ä¸åˆå€¼è®¾å®š
 
     char* MemoryPool_Alloc::start_free = 0;
     char* MemoryPool_Alloc::end_free = 0;
     size_t MemoryPool_Alloc::heap_size = 0;
 	
     MemoryPool_Alloc::obj *MemoryPool_Alloc::Free_List[MemoryPool_Alloc::__NFREELISTS] = 
-	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
 	void *MemoryPool_Alloc::allocate(size_t bytes) {
 		
-		//ÈôËùĞèÄÚ´æ´óÓÚ256×Ö½Ú£¬ÈÏÎªÆäËùĞèÄÚ´æ¿é½Ï´ó£¬Ö±½Óµ÷ÓÃmallocº¯ÊıÉêÇëÄÚ´æ
+		//è‹¥æ‰€éœ€å†…å­˜å¤§äº256å­—èŠ‚ï¼Œè®¤ä¸ºå…¶æ‰€éœ€å†…å­˜å—è¾ƒå¤§ï¼Œç›´æ¥è°ƒç”¨mallocå‡½æ•°ç”³è¯·å†…å­˜
 
 		if (bytes > __MAX_BYTES){
-			void *p;
-			p = malloc(bytes);
-			return p;
+			return malloc(bytes);
 		}
 		else{
 			size_t index;
 
-			//Ñ°ÕÒfree_listÖĞºÏÊÊµÄÒ»¸ö¹ÜÀí¿Õ¼äÈ¥È¡ÄÚ´æ
+			//å¯»æ‰¾free_listä¸­åˆé€‚çš„ä¸€ä¸ªç®¡ç†ç©ºé—´å»å–å†…å­˜
 			index = FREELIST_INDEX(bytes);
 			obj *my_free_list = Free_List[index];
 
-			//Èç¹û¶ÔÓ¦µÄfree_listÃ»ÓĞÄÚ´æ£¬Ôò´ÓÄÚ´æ³ØÖĞÈ¥È¡
+			//å¦‚æœå¯¹åº”çš„free_listæ²¡æœ‰å†…å­˜ï¼Œåˆ™ä»å†…å­˜æ± ä¸­å»å–
 			if (my_free_list == NULL){
 				void *r = refill(ROUND_UP(bytes));
 		        
 				return r;
 			}
-			Free_List[index] = my_free_list->Free_List_Link;//½«ÄÚ´æ¿éÊ¹ÓÃÈ¨½»¸ømy_free_list
+			Free_List[index] = my_free_list->Free_List_Link;//å°†å†…å­˜å—ä½¿ç”¨æƒäº¤ç»™my_free_list
 
 			return my_free_list;
 		}
 	}
 	void MemoryPool_Alloc::deallocate(void *p, size_t bytes) {
 
-		//Èç¹ûÉêÇëÊÍ·ÅµÄÄÚ´æ´óÓÚ256×Ö½Ú£¬ÔòÖ±½Óµ÷ÓÃfree
+		//å¦‚æœç”³è¯·é‡Šæ”¾çš„å†…å­˜å¤§äº256å­—èŠ‚ï¼Œåˆ™ç›´æ¥è°ƒç”¨free
 
 		if (bytes > __MAX_BYTES){
 			free(p);
+			return;
 		}
 
-		//Èç¹ûĞ¡ÓÚ256×Ö½Ú£¬Ôò»ØÊÕÖÁfree_listÖĞ
+		//å¦‚æœå°äº256å­—èŠ‚ï¼Œåˆ™å›æ”¶è‡³free_listä¸­
 
 		obj* my_free_list;
 		size_t index;
@@ -112,9 +138,10 @@ public:
 		obj *mynode = static_cast<obj*>(p);
 		mynode->Free_List_Link = my_free_list;
 		my_free_list = mynode;
+		return;
 	}
 	void *MemoryPool_Alloc::reallocate(void *p, size_t originalSize, size_t newSize) {
-		if (originalSize > __MAX_BYTES) {//Ô­ÄÚ´æ´óĞ¡³¬¹ı256Bytes£¬ÔòÖ±½ÓÊ¹ÓÃreallocº¯ÊıÏò²Ù×÷ÏµÍ³heapÉêÇë¿Õ¼ä
+		if (originalSize > __MAX_BYTES) {//åŸå†…å­˜å¤§å°è¶…è¿‡256Bytesï¼Œåˆ™ç›´æ¥ä½¿ç”¨reallocå‡½æ•°å‘æ“ä½œç³»ç»Ÿheapç”³è¯·ç©ºé—´
 			void *new_p = realloc(p, newSize);
 
 			return new_p;
@@ -126,23 +153,26 @@ public:
 		}
 	}
 	void *MemoryPool_Alloc::refill(size_t n) {
-		int nobjs = 20; //Ã¿´ÎÔö¼ÓµÄ½Úµã¸öÊı£¬ÈËÎª¹Ì¶¨Îª20¸ö
+		size_t nobjs = 20; //æ¯æ¬¡å¢åŠ çš„èŠ‚ç‚¹ä¸ªæ•°ï¼Œäººä¸ºå›ºå®šä¸º20ä¸ª
 
-		//´ÓÄÚ´æ³ØÖĞÈ¡³önobjs¸ön bytesÈİÁ¿µÄÇø¿é
+		//ä»å†…å­˜æ± ä¸­å–å‡ºnobjsä¸ªn byteså®¹é‡çš„åŒºå—
 		char* chunk = chunk_alloc(n, nobjs);
-
-		obj * volatile*my_lists;//Ö¸Ïòfree_listµÄÖ¸Õë
+#ifdef USE_VOLATILE
+                obj *  volatile*my_lists;//æŒ‡å‘free_listçš„æŒ‡é’ˆ
+				#else
+				obj** my_lists;
+				#endif
 		obj *result;
 		obj *current_obj, *next_obj;
 
-		int i;
-		//Èç¹ûÖ»»ñµÃ1¸öÇø¿é£¬Ôò¸ÃÇø¿éµ÷ÓÃ¸øÓÃ»§Ê¹ÓÃ£¬free_listÃ»ÓĞĞÂ½Úµã
+		size_t i;
+		//å¦‚æœåªè·å¾—1ä¸ªåŒºå—ï¼Œåˆ™è¯¥åŒºå—è°ƒç”¨ç»™ç”¨æˆ·ä½¿ç”¨ï¼Œfree_listæ²¡æœ‰æ–°èŠ‚ç‚¹
 		if (1 == nobjs) return(chunk);
-		//Ñ¡ÔñºÏÊÊµÄfree_list£¬ÄÉÈëĞÂ½Úµã
+		//é€‰æ‹©åˆé€‚çš„free_listï¼Œçº³å…¥æ–°èŠ‚ç‚¹
 		my_lists = Free_List + FREELIST_INDEX(n);
-		//µÚÒ»¿éÄÚ´æÖ±½Ó·µ»Ø¸ø¿Í¶ËÊ¹ÓÃ
+		//ç¬¬ä¸€å—å†…å­˜ç›´æ¥è¿”å›ç»™å®¢ç«¯ä½¿ç”¨
 		result = (obj*)chunk;
-		//Ê£ÏÂµÄÄÚ´æ¿éÊ×Î²ÒÀ´ÎÏàÁ¬¼ÓÈëµ½¶ÔÓ¦µÄfree_listÖĞÈ¥
+		//å‰©ä¸‹çš„å†…å­˜å—é¦–å°¾ä¾æ¬¡ç›¸è¿åŠ å…¥åˆ°å¯¹åº”çš„free_listä¸­å»
 		*my_lists = next_obj = (obj*)(chunk + n);
 		for (i = 1; i<nobjs; i++){
 			current_obj = next_obj;
@@ -164,15 +194,15 @@ public:
 		size_t bytesleft = end_free - start_free;
 
 		if (bytesleft >= totalsize) {
-			//Èç¹ûÄÚ´æ³ØÊ£ÏÂµÄ¿Õ¼ä´óÓÚËùĞèÒªµÄÄÚ´æ¿Õ¼ä
+			//å¦‚æœå†…å­˜æ± å‰©ä¸‹çš„ç©ºé—´å¤§äºæ‰€éœ€è¦çš„å†…å­˜ç©ºé—´
 			result = start_free;
 			start_free += totalsize;
 
 			return result;
 		}
 		else if (bytesleft >= size) {
-			//Èç¹ûÄÚ´æ³ØÊ£ÏÂµÄ¿Õ¼äÖÁÉÙ¿ÉÒÔ¹©Ò»¸ö(»òÒÔÉÏ)µÄsize
-			//ÄÇÃ´½«ÄÚ´æ³ØÊ£ÏÂ×î´ó¿É·ÖÅä¿éÊı¸øfree-list£¬¸üĞÂnobjsÎª×î´ó·ÖÅä¿éÊıx(x < 20)
+			//å¦‚æœå†…å­˜æ± å‰©ä¸‹çš„ç©ºé—´è‡³å°‘å¯ä»¥ä¾›ä¸€ä¸ª(æˆ–ä»¥ä¸Š)çš„size
+			//é‚£ä¹ˆå°†å†…å­˜æ± å‰©ä¸‹æœ€å¤§å¯åˆ†é…å—æ•°ç»™free-listï¼Œæ›´æ–°nobjsä¸ºæœ€å¤§åˆ†é…å—æ•°x(x < 20)
 			nobjs = bytesleft / size;
 			totalsize = nobjs * size;
 			result = start_free;
@@ -181,24 +211,24 @@ public:
 			return result;
 		}
 
-		else {    //ÄÚ´æ³ØÊ£Óà¿Õ¼äÁ¬Ò»¿éÄÚ´æ¶¼ÎŞ·¨Ìá¹©
-			//½«ÄÚ´æ³ØÄÚµÄÊ£ÓàÄÚ´æÏÈ·ÖÅä¸øºÏÊÊµÄfree_list
+		else {    //å†…å­˜æ± å‰©ä½™ç©ºé—´è¿ä¸€å—å†…å­˜éƒ½æ— æ³•æä¾›
+			//å°†å†…å­˜æ± å†…çš„å‰©ä½™å†…å­˜å…ˆåˆ†é…ç»™åˆé€‚çš„free_list
 			if (bytesleft > 0) {
 				obj **my_free_list;
 				my_free_list = Free_List + FREELIST_INDEX(bytesleft);
 				((obj*)start_free)->Free_List_Link = *my_free_list;
 				*my_free_list = ((obj*)start_free);
 			}
-			//ÏòÏµÍ³heapÉêÇëÄÚ´æ
+			//å‘ç³»ç»Ÿheapç”³è¯·å†…å­˜
 			size_t bytesToGet = 2 * totalsize + ROUND_UP(heap_size >> 4);
 			start_free = (char*)malloc(bytesToGet);
 			if (NULL == start_free) {
-				//heap¿Õ¼ä²»×ã£¬mallocÊ§°Ü
+				//heapç©ºé—´ä¸è¶³ï¼Œmallocå¤±è´¥
 				size_t i;
 
 				obj** my_free_list;
 				obj* temp;
-				//ÊÔ×ÅËÑÑ°Ò»ÏÂfreelistÖĞ"ÉĞÓĞÎ´ÓÃµ«×ã¹»´óµÄÄÚ´æ¿é"
+				//è¯•ç€æœå¯»ä¸€ä¸‹freelistä¸­"å°šæœ‰æœªç”¨ä½†è¶³å¤Ÿå¤§çš„å†…å­˜å—"
 				for (i = size; i < __MAX_BYTES; i += __ALIGN) {
 					my_free_list = Free_List + FREELIST_INDEX(i);
 					temp = *my_free_list;
@@ -206,21 +236,22 @@ public:
 						*my_free_list = temp->Free_List_Link;
 						start_free = (char*)temp;
 						end_free = start_free + i;
-						//µİ¹éµ÷ÓÃ£¬µ÷Õûnobjs
+						//é€’å½’è°ƒç”¨ï¼Œè°ƒæ•´nobjs
 						return chunk_alloc(size, nobjs);
 
 					}
 				}
-				//ÍêÈ«Ã»ÄÚ´æÁË£¬·ÅÆú°É
+				//å®Œå…¨æ²¡å†…å­˜äº†ï¼Œæ”¾å¼ƒå§
 				end_free = NULL;
 			}
 			heap_size += bytesToGet;
 			end_free = start_free + bytesToGet;
 			
-			//µİ¹éµ÷ÓÃ£¬µ÷Õûnobjs
+			//é€’å½’è°ƒç”¨ï¼Œè°ƒæ•´nobjs
 			return chunk_alloc(size, nobjs);
 		}
 	}
 
 
+#endif
 #endif

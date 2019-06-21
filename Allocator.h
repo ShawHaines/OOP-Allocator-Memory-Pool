@@ -1,7 +1,11 @@
 #pragma once
 #include <cstddef>
+#include<utility>
 #include <type_traits>
-#include "MemoryPool.h"
+#include "MemoryPool_Alloc.h"
+#define ARGUMENT_PACK_CONSTRUCT
+#define INLINE_CTOR_DTOR
+
 
 template <typename T>
 class Allocator{
@@ -25,16 +29,20 @@ public:
      *  Default count is 1.*/
     pointer allocate(size_type _Count=1);
     /*deallocates storage. Returns 0 if success.*/
-    int deallocate(pointer _Ptr, size_type _Count=1);
+    void deallocate(pointer _Ptr, size_type _Count=1);
     /*constructs an object in allocated storage. */
-    template <class _Objty, class Tpes>
-    void construct(_Objty *_Ptr, Tpes &&... _Args);
+    template <typename ObjectType, typename ValueType>
+    void construct(ObjectType* p,ValueType value );
+    #ifdef ARGUMENT_PACK_CONSTRUCT
+    template <class _Objty, class... Tpes>
+    void construct(_Objty *_Ptr, Tpes&&..._Args);
+    #endif
     /*destructs an object in allocated storage */
     template <class _Uty>
     void destroy(_Uty *_Ptr);
 
 private:
-    static MemoryPool pool;
+    static MemoryPool_Alloc pool;
 };
 /**TODO:
  * solve the case that the operator& is overloaded.
@@ -49,19 +57,29 @@ const T* Allocator<T>::address(const T& _Val) const noexcept{
 }
 template <typename T>
 T* Allocator<T>::allocate(std::size_t count){
-    return static_cast<T* >(pool.allocate(sizeof(T)*count));
+    return static_cast<T* >(Allocator<T>::pool.allocate(sizeof(T)*count));
 }
 template <typename T>
-int Allocator<T>::deallocate(T* p,std::size_t count){
-    return pool.deallocate(static_cast<void* >(p),sizeof(T)*count);
+void Allocator<T>::deallocate(T* p,std::size_t count){
+    pool.deallocate(static_cast<void* >(p),sizeof(T)*count);
+    return;
 }
+#ifdef ARGUMENT_PACK_CONSTRUCT
+
 /*...Args是模板参数包, Template parameter pack. */
 template <typename T>
-template <typename ObjectType,typename ArgType>
-void Allocator<T>::construct(ObjectType* p,ArgType&&... args){
+template <typename ObjectType,typename... ArgType>
+void Allocator<T>::construct(ObjectType* p,ArgType&& ...args){
     new(p) ObjectType(std::forward<ArgType>(args)...);
     return;
 }
+#endif
+template <typename T>
+template <typename ObjectType, typename ValueType>
+void Allocator<T>::construct(ObjectType* p,ValueType value ){
+    new(p) ObjectType(value);
+}
+
 template <typename T>
 template<typename ObjectType>
 void Allocator<T>::destroy(ObjectType* p){
