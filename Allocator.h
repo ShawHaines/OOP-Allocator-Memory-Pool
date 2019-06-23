@@ -78,7 +78,7 @@ template <typename T>
 template <typename ObjectType, typename ValueType>
 void Allocator<T>::construct(ObjectType* p,ValueType value ){
     new(p) ObjectType(value);
-}
+}//compile-time error
 
 template <typename T>
 template<typename ObjectType>

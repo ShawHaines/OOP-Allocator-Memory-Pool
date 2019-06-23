@@ -7,11 +7,11 @@
 // include header of your allocator here
 template <class T>
 using MyAllocator =
-    std::allocator<T>;  // replace the std::allocator with your allocator
+    Allocator<T>;  // replace the std::allocator with your allocator
 // using Point2D = std::pair<int, int>;
-const int TestSize = 10000;
+const int TestSize = 100000;
 
-const int PickSize = 10000;
+const int PickSize = 100000;
 const int SmallSize = 100;
 
 #define USE_MYCLASS
